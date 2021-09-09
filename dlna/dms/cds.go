@@ -138,7 +138,7 @@ func (me *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, fil
 			item.Res = append(item.Res, transcodeResources(host, cdsObject.Path, resolution, resDuration)...)
 		}
 	}
-	if mimeType.IsVideo() || mimeType.IsImage() {
+	if mimeType.IsImage() {
 		item.Res = append(item.Res, upnpav.Resource{
 			URL: (&url.URL{
 				Scheme: "http",
@@ -230,7 +230,12 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 		}
 		switch browse.BrowseFlag {
 		case "BrowseDirectChildren":
-			objs, err := me.readContainer(obj, host, userAgent)
+			var objs []interface{}
+			if me.OnBrowseDirectChildren == nil {
+				objs, err = me.readContainer(obj, host, userAgent)
+			} else {
+				objs, err = me.OnBrowseDirectChildren(obj.Path, obj.RootObjectPath, host, userAgent)
+			}
 			if err != nil {
 				return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
 			}
@@ -256,21 +261,28 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				{"UpdateID", me.updateIDString()},
 			}, nil
 		case "BrowseMetadata":
-			fileInfo, err := os.Stat(obj.FilePath())
-			if err != nil {
-				if os.IsNotExist(err) {
-					return nil, &upnp.Error{
-						Code: upnpav.NoSuchObjectErrorCode,
-						Desc: err.Error(),
+			var ret interface{}
+			var err error
+			if me.OnBrowseMetadata == nil {
+				var fileInfo os.FileInfo
+				fileInfo, err = os.Stat(obj.FilePath())
+				if err != nil {
+					if os.IsNotExist(err) {
+						return nil, &upnp.Error{
+							Code: upnpav.NoSuchObjectErrorCode,
+							Desc: err.Error(),
+						}
 					}
+					return nil, err
 				}
-				return nil, err
+				ret, err = me.cdsObjectToUpnpavObject(obj, fileInfo, host, userAgent)
+			} else {
+				ret, err = me.OnBrowseMetadata(obj.Path, obj.RootObjectPath, host, userAgent)
 			}
-			upnp, err := me.cdsObjectToUpnpavObject(obj, fileInfo, host, userAgent)
 			if err != nil {
 				return nil, err
 			}
-			buf, err := xml.Marshal(upnp)
+			buf, err := xml.Marshal(ret)
 			if err != nil {
 				return nil, err
 			}
