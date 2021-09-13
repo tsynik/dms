@@ -278,12 +278,6 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				ret, err = me.cdsObjectToUpnpavObject(obj, fileInfo, host, userAgent)
 			} else {
 				ret, err = me.OnBrowseMetadata(obj.Path, obj.RootObjectPath, host, userAgent)
-				if err != nil {
-					return nil, &upnp.Error{
-						Code: upnpav.NoSuchObjectErrorCode,
-						Desc: err.Error(),
-					}
-				}
 			}
 			if err != nil {
 				return nil, err
