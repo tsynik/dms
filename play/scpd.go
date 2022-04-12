@@ -6,9 +6,9 @@ package main
 import (
 	"encoding/xml"
 	"fmt"
-	"log"
 
 	"github.com/anacrolix/dms/upnp"
+	"github.com/anacrolix/log"
 )
 
 func main() {
@@ -23,8 +23,10 @@ func main() {
 			},
 		},
 		ServiceStateTable: []upnp.StateVariable{
-			{SendEvents: "no", Name: "A_ARG_TYPE_ObjectID", DataType: "string",
-				AllowedValues: &[]string{"hi", "there"}},
+			{
+				SendEvents: "no", Name: "A_ARG_TYPE_ObjectID", DataType: "string",
+				AllowedValues: &[]string{"hi", "there"},
+			},
 			{
 				SendEvents: "yes",
 				Name:       "loltype",

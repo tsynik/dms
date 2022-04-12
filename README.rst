@@ -15,7 +15,7 @@ will also provide thumbnails where possible.
 
 dms uses ``ffprobe``/``avprobe`` to get media data such as bitrate and duration, ``ffmpeg``/``avconv`` for video transoding, and ``ffmpegthumbnailer`` for generating thumbnails when browsing. These commands must be in the ``PATH`` given to ``dms`` or the features requiring them will be disabled.
 
-.. image:: https://lh3.googleusercontent.com/-z-zh7AzObGo/UEiWni1cQPI/AAAAAAAAASI/DRw9IoMMiNs/w497-h373/2012%2B-%2B1
+.. image:: https://i.imgur.com/qbHilI7.png
 
 Installing
 ==========
@@ -49,3 +49,46 @@ Known Compatible Players and Renderers
  * Chromecast
  * VLC
  * LG Smart TVs, with varying success.
+
+
+Usage of dms:
+=====================
+
+.. list-table:: Usage
+   :widths: auto
+   :header-rows: 1
+
+   * - parameter
+     - description
+   * - ``-allowedIps string``
+     - allowed ip of clients, separated by comma
+   * - ``-config string``
+     - json configuration file
+   * - ``-deviceIcon string``
+     - device icon
+   * - ``-fFprobeCachePath string``
+     - path to FFprobe cache file (default "/home/efreak/.dms-ffprobe-cache")
+   * - ``-forceTranscodeTo string``
+     - force transcoding to certain format, supported: 'chromecast', 'vp8'
+   * - ``-friendlyName string``
+     - server friendly name
+   * - ``-http string``
+     - http server port (default ":1338")
+   * - ``-ifname string``
+     - specific SSDP network interface
+   * - ``-ignoreHidden``
+     - ignore hidden files and directories
+   * - ``-ignoreUnreadable``
+     - ignore unreadable files and directories
+   * - ``-logHeaders``
+     - log HTTP headers
+   * - ``-noProbe``
+     - disable media probing with ffprobe
+   * - ``-noTranscode``
+     - disable transcoding
+   * - ``-notifyInterval duration``
+     - interval between SSPD announces (default 30s)
+   * - ``-path string``
+     - browse root path
+   * - ``-stallEventSubscribe``
+     - workaround for some bad event subscribers

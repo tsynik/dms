@@ -1,12 +1,13 @@
 package dms
 
 import (
-	"log"
 	"mime"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/anacrolix/log"
 )
 
 func init() {
@@ -15,6 +16,9 @@ func init() {
 	}
 	if err := mime.AddExtensionType(".ogv", "video/ogg"); err != nil {
 		log.Printf("Could not register video/ogg MIME type: %s", err)
+	}
+	if err := mime.AddExtensionType(".ogg", "audio/ogg"); err != nil {
+		log.Printf("Could not register audio/ogg MIME type: %s", err)
 	}
 }
 

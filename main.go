@@ -1,16 +1,15 @@
 package main
 
-//go:generate go-bindata data/
-
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -24,8 +23,12 @@ import (
 
 	"github.com/anacrolix/dms/dlna/dms"
 	"github.com/anacrolix/dms/rrcache"
+	"github.com/anacrolix/log"
 	"github.com/nfnt/resize"
 )
+
+//go:embed "data/VGC Sonic.png"
+var defaultIcon []byte
 
 type dmsConfig struct {
 	Path                string
@@ -60,7 +63,7 @@ func (config *dmsConfig) load(configPath string) {
 	}
 }
 
-//default config
+// default config
 var config = &dmsConfig{
 	Path:             "",
 	IfName:           "",
@@ -109,13 +112,18 @@ func (fc *fFprobeCache) Set(key interface{}, value interface{}) {
 }
 
 func main() {
-	log.SetFlags(log.Ltime | log.Lshortfile)
+	err := mainErr()
+	if err != nil {
+		log.Fatalf("error in main: %v", err)
+	}
+}
 
+func mainErr() error {
 	path := flag.String("path", config.Path, "browse root path")
 	ifName := flag.String("ifname", config.IfName, "specific SSDP network interface")
 	http := flag.String("http", config.Http, "http server port")
 	friendlyName := flag.String("friendlyName", config.FriendlyName, "server friendly name")
-	deviceIcon := flag.String("deviceIcon", config.DeviceIcon, "device icon")
+	deviceIcon := flag.String("deviceIcon", config.DeviceIcon, "device defaultIcon")
 	logHeaders := flag.Bool("logHeaders", config.LogHeaders, "log HTTP headers")
 	fFprobeCachePath := flag.String("fFprobeCachePath", config.FFprobeCachePath, "path to FFprobe cache file")
 	configFilePath := flag.String("config", "", "json configuration file")
@@ -131,8 +139,10 @@ func main() {
 	flag.Parse()
 	if flag.NArg() != 0 {
 		flag.Usage()
-		log.Fatalf("%s: %s\n", "unexpected positional arguments", flag.Args())
+		return fmt.Errorf("%s: %s\n", "unexpected positional arguments", flag.Args())
 	}
+
+	logger := log.Default.WithNames("main")
 
 	config.Path, _ = filepath.Abs(*path)
 	config.IfName = *ifName
@@ -144,8 +154,8 @@ func main() {
 	config.AllowedIpNets = makeIpNets(*allowedIps)
 	config.ForceTranscodeTo = *forceTranscodeTo
 
-	log.Printf("allowed ip nets are %q", config.AllowedIpNets)
-	log.Printf("serving folder %q", config.Path)
+	logger.Printf("allowed ip nets are %q", config.AllowedIpNets)
+	logger.Printf("serving folder %q", config.Path)
 
 	if len(*configFilePath) > 0 {
 		config.load(*configFilePath)
@@ -159,6 +169,7 @@ func main() {
 	}
 
 	dmsServer := &dms.Server{
+		Logger: logger.WithNames("dms", "server"),
 		Interfaces: func(ifName string) (ifs []net.Interface) {
 			var err error
 			if ifName == "" {
@@ -198,19 +209,19 @@ func main() {
 		ForceTranscodeTo: config.ForceTranscodeTo,
 		NoProbe:          config.NoProbe,
 		Icons: []dms.Icon{
-			dms.Icon{
-				Width:      48,
-				Height:     48,
-				Depth:      8,
-				Mimetype:   "image/png",
-				ReadSeeker: readIcon(config.DeviceIcon, 48),
+			{
+				Width:    48,
+				Height:   48,
+				Depth:    8,
+				Mimetype: "image/png",
+				Bytes:    readIcon(config.DeviceIcon, 48),
 			},
-			dms.Icon{
-				Width:      128,
-				Height:     128,
-				Depth:      8,
-				Mimetype:   "image/png",
-				ReadSeeker: readIcon(config.DeviceIcon, 128),
+			{
+				Width:    128,
+				Height:   128,
+				Depth:    8,
+				Mimetype: "image/png",
+				Bytes:    readIcon(config.DeviceIcon, 128),
 			},
 		},
 		StallEventSubscribe: config.StallEventSubscribe,
@@ -237,6 +248,7 @@ func main() {
 	if err := cache.save(config.FFprobeCachePath); err != nil {
 		log.Print(err)
 	}
+	return nil
 }
 
 func (cache *fFprobeCache) load(path string) error {
@@ -292,12 +304,12 @@ func (cache *fFprobeCache) save(path string) error {
 
 func getIconReader(path string) (io.ReadCloser, error) {
 	if path == "" {
-		return ioutil.NopCloser(bytes.NewReader(MustAsset("data/VGC Sonic.png"))), nil
+		return ioutil.NopCloser(bytes.NewReader(defaultIcon)), nil
 	}
 	return os.Open(path)
 }
 
-func readIcon(path string, size uint) *bytes.Reader {
+func readIcon(path string, size uint) []byte {
 	r, err := getIconReader(path)
 	if err != nil {
 		panic(err)
@@ -310,11 +322,11 @@ func readIcon(path string, size uint) *bytes.Reader {
 	return resizeImage(imageData, size)
 }
 
-func resizeImage(imageData image.Image, size uint) *bytes.Reader {
+func resizeImage(imageData image.Image, size uint) []byte {
 	img := resize.Resize(size, size, imageData, resize.Lanczos3)
 	var buff bytes.Buffer
 	png.Encode(&buff, img)
-	return bytes.NewReader(buff.Bytes())
+	return buff.Bytes()
 }
 
 func makeIpNets(s string) []*net.IPNet {
