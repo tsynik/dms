@@ -80,8 +80,7 @@ func ReadRequest(b *bufio.Reader) (req *http.Request, err error) {
 }
 
 type Server struct {
-	listenConn     *net.UDPConn
-	writeConn      *net.UDPConn
+	conn           *net.UDPConn
 	Interface      net.Interface
 	Server         string
 	Services       []string
@@ -92,7 +91,7 @@ type Server struct {
 	closed         chan struct{}
 }
 
-func makeListenConn(ifi net.Interface) (ret *net.UDPConn, err error) {
+func makeConn(ifi net.Interface) (ret *net.UDPConn, err error) {
 	ret, err = net.ListenMulticastUDP("udp", &ifi, NetAddr)
 	if err != nil {
 		return
@@ -116,7 +115,7 @@ func (me *Server) serve() {
 			size = 65536
 		}
 		b := make([]byte, size)
-		n, addr, err := me.listenConn.ReadFromUDP(b)
+		n, addr, err := me.conn.ReadFromUDP(b)
 		select {
 		case <-me.closed:
 			return
@@ -132,16 +131,14 @@ func (me *Server) serve() {
 
 func (me *Server) Init() (err error) {
 	me.closed = make(chan struct{})
-	me.listenConn, err = makeListenConn(me.Interface)
-	me.writeConn, err = net.DialUDP("udp4", nil, NetAddr)
+	me.conn, err = makeConn(me.Interface)
 	return
 }
 
 func (me *Server) Close() {
 	close(me.closed)
 	me.sendByeBye()
-	me.writeConn.Close()
-	me.listenConn.Close()
+	me.conn.Close()
 }
 
 func (me *Server) Serve() (err error) {
@@ -202,7 +199,7 @@ func (me *Server) makeNotifyMessage(target, nts string, extraHdrs [][2]string) [
 }
 
 func (me *Server) send(buf []byte, addr *net.UDPAddr) {
-	if n, err := me.writeConn.Write(buf); err != nil {
+	if n, err := me.conn.WriteToUDP(buf, addr); err != nil {
 		log.Printf("error writing to UDP socket: %s", err)
 	} else if n != len(buf) {
 		log.Printf("short write: %d/%d bytes", n, len(buf))
