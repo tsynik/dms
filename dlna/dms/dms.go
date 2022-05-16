@@ -188,6 +188,7 @@ func (me *Server) ssdpInterface(if_ net.Interface) {
 		Server:         serverField,
 		UUID:           me.rootDeviceUUID,
 		NotifyInterval: me.NotifyInterval,
+		Logger:         logger.WithNames("server"),
 	}
 	if err := s.Init(); err != nil {
 		if if_.Flags&ssdpInterfaceFlags != ssdpInterfaceFlags {
@@ -200,7 +201,7 @@ func (me *Server) ssdpInterface(if_ net.Interface) {
 			// good.
 			return
 		}
-		logger.Printf("error creating ssdp server on %s: %s", if_.Name, err)
+		logger.Levelf(log.Error, "error creating ssdp server on %s: %s", if_.Name, err)
 		return
 	}
 	defer s.Close()
@@ -209,7 +210,7 @@ func (me *Server) ssdpInterface(if_ net.Interface) {
 	go func() {
 		defer close(stopped)
 		if err := s.Serve(); err != nil {
-			logger.Printf("%q: %q\n", if_.Name, err)
+			logger.Levelf(log.Error, "%q: %q\n", if_.Name, err)
 		}
 	}()
 	select {
